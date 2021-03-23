@@ -34,7 +34,6 @@ io.on("connection", (socket) => {
         const newIds = hostFirstRoomIdA[firstId].filter(
           (f) => f !== hostSecondRoomId[secondId]
         );
-        // console.log(socket.id);
         newIds.push(socket.id);
         hostFirstRoomIdA[firstId] = newIds;
         delete idToRoomId[hostSecondRoomId[secondId]];
@@ -61,12 +60,10 @@ io.on("connection", (socket) => {
     const { public, roomId } = payload;
     if (public) {
       // host in public mood
-      // console.log("host in public");
       roomPubStatus[roomId] = true;
     } else {
-      //host in private mod
+      // host in private mood
       roomPubStatus[roomId] = false;
-      // console.log("host in private");
     }
   });
   //for client
@@ -75,24 +72,17 @@ io.on("connection", (socket) => {
 
     const hostId = roomToHost[roomId];
     clientToName[socket.id] = name;
-    // console.log(clientToName[socket.id]);
     if (roomPubStatus[roomId] && hostFirstRoomIdA[roomId]) {
       hostFirstRoomIdA[roomId].push(socket.id);
       clintToHost[socket.id] = roomToHost[roomId];
-      // socket.emit("Nothing need any permission", { hostId });
-      // const usersExceptHostInRoom = hostFirstRoomIdA[roomId]
-      // console.log("host " + hostId);
-      // console.log("Client id " + socket.id);
+
       io.to(hostId).emit("send for signal", { userId: socket.id });
-      // console.log("room in public mood");
     } else {
       if (!roomPubStatus[roomId] && hostFirstRoomIdA[roomId]) {
-        // console.log(socket.id);
         io.to(hostId).emit("required permission of host", {
           clientId: socket.id,
           name,
         });
-        // console.log("room in private mood");
       } else {
         socket.emit("host not exit", "host is not exit.");
       }
@@ -102,6 +92,10 @@ io.on("connection", (socket) => {
   socket.on("permission status", (payload) => {
     const { clientId, permission } = payload;
     if (permission && clientToName[clientId]) {
+      hostFirstRoomIdA[idToRoomId[socket.id]].push(clientId);
+      clintToHost[clientId] = socket.id;
+      // hostFirstRoomIdA[idToRoomId[socket.id]]
+
       io.to(clientId).emit("permission accept", {
         hostId: socket.id,
       });
@@ -124,9 +118,12 @@ io.on("connection", (socket) => {
     });
   });
   socket.on("sending signal", (payload) => {
+    const courseName = roomToName[idToRoomId[socket.id]];
+
     io.to(payload.userToSignal).emit("user joined", {
       hostSignal: payload.signal,
       hostSelfId: payload.callerID,
+      courseName,
     });
   });
   //get option
@@ -134,6 +131,7 @@ io.on("connection", (socket) => {
     const inThisRoom = hostFirstRoomIdA[idToRoomId[socket.id]].filter(
       (id) => id !== socket.id
     );
+
     inThisRoom.forEach((client) => {
       io.to(client).emit("client side option", { cOption: payload.option });
     });
@@ -151,6 +149,7 @@ io.on("connection", (socket) => {
     const inThisRoom = hostFirstRoomIdA[idToRoomId[socket.id]].filter(
       (id) => id !== socket.id
     );
+
     inThisRoom.forEach((client) => {
       io.to(client).emit("result to client", { result: payload.data });
     });
@@ -169,7 +168,10 @@ io.on("connection", (socket) => {
         delete roomPubStatus[payload.room];
         delete hostSecondRoomId[firstToSecond[payload.room]];
         delete firstToSecond[payload.room];
-      } else if (hostFirstRoomIdA[payload.room].length > 1) {
+      } else if (
+        hostFirstRoomIdA[payload.room] &&
+        hostFirstRoomIdA[payload.room].length > 1
+      ) {
         const romveClintId = hostFirstRoomIdA[payload.room].filter(
           (id) => id !== socket.id
         );
